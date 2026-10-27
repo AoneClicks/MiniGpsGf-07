@@ -488,6 +488,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
       <form id="order-form" novalidate>
         <div class="grid2">
           <div class="span2"><label for="nombre">Nombre y apellidos completos</label><input id="nombre" name="nombre" autocomplete="name" required></div>
+          <div class="span2"><label for="correo">Correo electrónico</label><input id="correo" name="correo" type="email" autocomplete="email" placeholder="tunombre@ejemplo.com" required></div>
           <div class="span2"><label for="celular">Celular / WhatsApp (10 dígitos)</label><input id="celular" name="celular" type="tel" inputmode="numeric" maxlength="12" autocomplete="tel-national" placeholder="3001234567" required></div>
           <div><label for="departamento">Departamento</label>
             <select id="departamento" name="departamento" required><option value="">Selecciona…</option></select></div>
@@ -610,6 +611,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
   const form = $('order-form');
   const rules = {
     nombre: (v) => v.trim().split(/\s+/).length >= 2 && v.trim().length >= 5 || 'Escribe tu nombre y apellidos completos.',
+    correo: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) || 'Ingresa un correo electrónico válido.',
     celular: (v) => /^3\d{9}$/.test(v.replace(/[\s-]/g, '')) || 'Ingresa un celular colombiano de 10 dígitos (ej. 3001234567).',
     departamento: (v) => !!v || 'Selecciona tu departamento.',
     ciudad: (v) => v.trim().length >= 2 || 'Indica tu municipio o ciudad.',
@@ -655,6 +657,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
       total: CONFIG.PRICES[q],
       metodo_pago: 'Pago contra entrega en efectivo',
       nombre: form.nombre.value.trim(),
+      correo: form.correo.value.trim(),
       celular: form.celular.value.replace(/[\s-]/g, ''),
       departamento: form.departamento.value,
       ciudad: form.ciudad.value.trim(),
@@ -668,6 +671,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
       const p = new URLSearchParams();
       p.set('checkout[shipping_address][first_name]', first);
       p.set('checkout[shipping_address][last_name]', rest.join(' '));
+      p.set('checkout[email]', order.correo);
       p.set('checkout[shipping_address][address1]', order.direccion);
       p.set('checkout[shipping_address][address2]', 'Ref: ' + order.referencia);
       p.set('checkout[shipping_address][city]', order.ciudad);
