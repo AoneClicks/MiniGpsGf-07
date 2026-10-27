@@ -560,14 +560,17 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
 (() => {
   'use strict';
 
-  /* ===== CONFIGURACIÓN =====
-     ORDER_ENDPOINT: URL de tu webhook / app COD (ReCompy, Releasit o servidor intermedio) que cree el pedido en Shopify.
-     No uses /admin/api/orders.json directamente desde el navegador: requiere un token privado que quedaría expuesto.
-     Si queda vacío, el pedido se envía por WhatsApp como respaldo. */
+  /* ===== CONFIGURACIÓN SHOPIFY =====
+     El formulario envía al cliente al checkout de tu tienda con los datos ya rellenados;
+     el pedido queda registrado en Shopify (Pedidos) con pago contra entrega.
+     Requisitos en Shopify: activar "Pago contra entrega" (Configuración → Pagos → Métodos de pago manuales)
+     y confirmar que VARIANT_ID es el ID de la variante del producto.
+     DISCOUNT_2: código de descuento para que 2 unidades cuesten $109.900 (créalo en Shopify → Descuentos). */
   const CONFIG = {
-    ORDER_ENDPOINT: '',
-    WHATSAPP: '573027350151',
-    PRICES: { 1: 79900, 2: 129900 },
+    STORE: 'https://aoneclicks.com.co',
+    VARIANT_ID: '67855171518558',
+    DISCOUNT_2: 'PROMO2GPS',
+    PRICES: { 1: 79900, 2: 109900 },
     PRODUCT: 'Mini GPS GF-07'
   };
 
@@ -642,7 +645,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
 
     const btn = $('submit-btn');
     if (btn.disabled) return;
-    btn.disabled = true; btn.textContent = 'Procesando pedido...';
+    btn.disabled = true; btn.textContent = 'Llevándote a tu pedido...';
 
     const q = Number(qty.value);
     const order = {
@@ -660,26 +663,23 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
     };
 
     try {
-      if (CONFIG.ORDER_ENDPOINT) {
-        const res = await fetch(CONFIG.ORDER_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(order) });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        $('success-msg').textContent = `Gracias, ${order.nombre.split(' ')[0]}. Te enviaremos la confirmación y el número de guía por WhatsApp al ${order.celular}.`;
-      } else {
-        const text = `Hola AoneClicks Shopping, quiero mi pedido:%0A${encodeURIComponent(
-`Producto: ${order.producto} x${order.cantidad}
-Total a pagar al recibir: ${money(order.total)}
-Nombre: ${order.nombre}
-Celular: ${order.celular}
-Ubicación: ${order.ciudad}, ${order.departamento}
-Dirección: ${order.direccion}
-Referencia: ${order.referencia}`)}`;
-        window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${text}`, '_blank', 'noopener');
-        $('success-msg').textContent = 'Se abrió WhatsApp con el resumen de tu pedido. Envía el mensaje para que un asesor lo confirme.';
-      }
-      form.hidden = true;
-      const ok = $('success'); ok.hidden = false; ok.focus(); ok.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const [first, ...rest] = order.nombre.split(/\s+/);
+      const p = new URLSearchParams();
+      p.set('checkout[shipping_address][first_name]', first);
+      p.set('checkout[shipping_address][last_name]', rest.join(' '));
+      p.set('checkout[shipping_address][address1]', order.direccion);
+      p.set('checkout[shipping_address][address2]', 'Ref: ' + order.referencia);
+      p.set('checkout[shipping_address][city]', order.ciudad);
+      p.set('checkout[shipping_address][province]', order.departamento);
+      p.set('checkout[shipping_address][country]', 'CO');
+      p.set('checkout[shipping_address][phone]', '+57' + order.celular);
+      p.set('note', `Pago contra entrega. Referencia: ${order.referencia}. Origen: ${order.origen}`);
+      p.set('attributes[Metodo de pago]', 'Contra entrega');
+      p.set('attributes[Referencia]', order.referencia);
+      if (q === 2 && CONFIG.DISCOUNT_2) p.set('discount', CONFIG.DISCOUNT_2);
+      window.location.href = `${CONFIG.STORE}/cart/${CONFIG.VARIANT_ID}:${q}?${p.toString()}`;
     } catch (err) {
-      showErr('No pudimos registrar tu pedido. Inténtalo de nuevo o escríbenos por WhatsApp al +57 302 7350151.');
+      showErr('No pudimos abrir tu pedido. Inténtalo de nuevo o escríbenos por WhatsApp al +57 302 7350151.');
       btn.disabled = false; btn.textContent = 'PEDIR AHORA Y PAGAR AL RECIBIR';
     }
   });
